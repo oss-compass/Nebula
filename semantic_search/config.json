@@ -1,0 +1,80 @@
+{
+  "embedding": {
+    "default_model": "all-MiniLM-L6-v2",
+    "model_type": "sentence_transformers",
+    "dimension": 384,
+    "batch_size": 32,
+    "max_length": 512,
+    "cache_dir": "./embedding_cache",
+    "use_cache": true,
+    "models": {
+      "sentence_transformers": {
+        "all-MiniLM-L6-v2": {
+          "name": "all-MiniLM-L6-v2",
+          "dimension": 384,
+          "description": "Fast and efficient sentence transformer model"
+        },
+        "all-mpnet-base-v2": {
+          "name": "all-mpnet-base-v2", 
+          "dimension": 768,
+          "description": "High-quality sentence transformer model"
+        },
+        "codebert-base": {
+          "name": "microsoft/codebert-base",
+          "dimension": 768,
+          "description": "Code-specific BERT model"
+        }
+      },
+      "openai": {
+        "text-embedding-ada-002": {
+          "name": "text-embedding-ada-002",
+          "dimension": 1536,
+          "description": "OpenAI's latest embedding model"
+        }
+      }
+    }
+  },
+  "sync": {
+    "max_file_size": 1048576,
+    "include_extensions": [".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".hpp", ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala"],
+    "exclude_patterns": ["__pycache__", ".git", "node_modules", "*.pyc", "*.class", "*.o", "*.so", "*.dll", "*.exe"],
+    "batch_size": 100,
+    "update_interval": 3600,
+    "enable_incremental": true
+  },
+  "search": {
+    "max_results": 100,
+    "default_threshold": 0.0,
+    "enable_hybrid_search": true,
+    "highlight_max_length": 200,
+    "highlight_context_lines": 3,
+    "enable_cache": true,
+    "cache_size": 1000,
+    "cache_ttl": 3600,
+    "enable_recommendations": true,
+    "recommendation_threshold": 0.7,
+    "max_recommendations": 5
+  },
+  "hybrid_search": {
+    "vector_weight": 0.7,
+    "graph_weight": 0.3,
+    "neo4j": {
+      "uri": "bolt://localhost:7687",
+      "user": "neo4j",
+      "password": "90879449Drq",
+      "database": null
+    },
+    "max_results": 50,
+    "enable_relationship_boost": true,
+    "relationship_boost_factor": 1.2,
+    "enable_cache": true,
+    "cache_ttl": 3600
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file": null,
+    "max_size": "10MB",
+    "backup_count": 5
+  }
+}
