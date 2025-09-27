@@ -119,6 +119,20 @@ class CodeVectorizer:
             if self.config.model_type == "sentence_transformers":
                 if not SENTENCE_TRANSFORMERS_AVAILABLE:
                     raise ImportError("sentence-transformers not available")
+                
+                # 尝试使用缓存的模型
+                try:
+                    from .model_cache import get_cached_model
+                    cached_model = get_cached_model(self.config.model_name)
+                    if cached_model is not None:
+                        self.model = cached_model
+                        self.config.dimension = self.model.get_sentence_embedding_dimension()
+                        logger.info(f"Using cached SentenceTransformer model: {self.config.model_name}")
+                        return
+                except ImportError:
+                    logger.warning("模型缓存不可用，使用直接加载")
+                
+                # 如果缓存不可用，直接加载模型
                 self.model = SentenceTransformer(self.config.model_name)
                 self.config.dimension = self.model.get_sentence_embedding_dimension()
                 logger.info(f"Loaded SentenceTransformer model: {self.config.model_name}")
@@ -164,7 +178,7 @@ class CodeVectorizer:
         content_hash = self._get_content_hash(content)
         return f"{self.config.model_name}_{self.config.model_type}_{content_hash}"
     
-    def _get_from_cache(self, content: str) -> Optional[CodeEmbedding]:
+    def _get_from_cache(self, content: str, current_metadata: Dict[str, Any] = None) -> Optional[CodeEmbedding]:
         """从缓存获取嵌入"""
         if not self.config.use_cache or not self.cache_db:
             return None
@@ -179,13 +193,19 @@ class CodeVectorizer:
         if row:
             embedding_data, metadata_str, timestamp = row
             embedding = pickle.loads(embedding_data)
-            metadata = json.loads(metadata_str)
+            cached_metadata = json.loads(metadata_str)
+            
+            # 合并当前metadata和缓存metadata，当前metadata优先
+            if current_metadata:
+                merged_metadata = {**cached_metadata, **current_metadata}
+            else:
+                merged_metadata = cached_metadata
             
             return CodeEmbedding(
                 id=cache_key,
                 content=content,
                 embedding=embedding,
-                metadata=metadata,
+                metadata=merged_metadata,
                 model_name=self.config.model_name,
                 timestamp=timestamp
             )
@@ -325,7 +345,7 @@ class CodeVectorizer:
         uncached_metadata = []
         
         for i, text in enumerate(processed_texts):
-            cached = self._get_from_cache(text)
+            cached = self._get_from_cache(text, metadata_list[i])
             if cached:
                 cached_embeddings.append(cached)
             else:

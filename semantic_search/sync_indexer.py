@@ -404,7 +404,8 @@ class SyncSemanticIndexer:
                 'end_line': func_end,
                 'language': indexed_file.language,
                 'function_type': 'regular',
-                'file_type': 'module'
+                'file_type': 'module',
+                'repo_name': os.path.basename(self.config.repo_path) if self.config and self.config.repo_path else ''
             }
             func_metadata_list.append(func_metadata)
         

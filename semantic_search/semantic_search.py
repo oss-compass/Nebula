@@ -255,7 +255,8 @@ class SemanticSearcher:
             'parent_class': metadata.get('parent_class_name', ''),
             'is_async': metadata.get('is_async', False),
             'is_test': metadata.get('is_test', False),
-            'is_decorator': metadata.get('is_decorator', False)
+            'is_decorator': metadata.get('is_decorator', False),
+            'repo_name': metadata.get('repo_name', '')
         }
         
         return context

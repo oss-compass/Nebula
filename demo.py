@@ -39,6 +39,56 @@ class OSSCompassAppNew:
         self.processing_status = {}
         self.results_cache = {}
         
+        # 预加载模型
+        self._preload_models()
+    
+    def _preload_models(self):
+        """预加载模型到缓存"""
+        try:
+            # 导入模型缓存管理器
+            from semantic_search.model_cache import preload_model, is_model_ready, get_model_stats
+            
+            logger.info("开始预加载SentenceTransformer模型...")
+            
+            # 在后台线程中预加载模型，避免阻塞UI启动
+            import threading
+            def load_models():
+                try:
+                    preload_model("all-MiniLM-L6-v2", background=False)
+                    logger.info("SentenceTransformer模型预加载完成")
+                    
+                    # 记录模型统计信息
+                    stats = get_model_stats()
+                    logger.info(f"模型缓存统计: {stats}")
+                    
+                except Exception as e:
+                    logger.error(f"模型预加载失败: {e}")
+            
+            # 启动后台线程
+            thread = threading.Thread(target=load_models, daemon=True)
+            thread.start()
+            
+        except ImportError as e:
+            logger.warning(f"无法导入模型缓存模块: {e}")
+        except Exception as e:
+            logger.error(f"模型预加载初始化失败: {e}")
+    
+    # def _check_model_status(self) -> str:
+    #     """检查模型状态"""
+    #     try:
+    #         from semantic_search.model_cache import is_model_ready, get_model_stats
+            
+    #         if is_model_ready():
+    #             stats = get_model_stats()
+    #             return f"✅ 模型已加载完成\n{stats}"
+    #         else:
+    #             return "⏳ 模型正在加载中，请稍候..."
+                
+    #     except ImportError:
+    #         return "⚠️ 模型缓存模块不可用"
+    #     except Exception as e:
+    #         return f"❌ 模型状态检查失败: {e}"
+        
     def initialize_components(self):
         try:
             # Try to import BatchProcessor
@@ -121,6 +171,22 @@ class OSSCompassAppNew:
             status_info.append("项目处理状态报告")
             status_info.append("=" * 50)
             
+            # 检查库分析进度
+            analyzed_libs = self._get_analyzed_libraries()
+            status_info.append(f"📚 已分析库数量: {len(analyzed_libs)}")
+            if analyzed_libs:
+                status_info.append("已分析的库:")
+                for lib in analyzed_libs:
+                    status_info.append(f"  • {lib}")
+            else:
+                status_info.append("尚未分析任何库")
+            status_info.append("")
+            
+            # # 检查模型状态
+            # model_status = self._check_model_status()
+            # status_info.append(f"🤖 模型状态:\n{model_status}")
+            # status_info.append("")
+            
             # Check output directories
             output_dirs = ['output/extract_output', 'output/description_output', 'output/vector_embedding_output', 'output/ingest_output']
             for dir_name in output_dirs:
@@ -157,10 +223,72 @@ class OSSCompassAppNew:
             logger.error(f"Failed to get status: {e}")
             return f"获取状态失败: {str(e)}"
     
+    def _get_analyzed_libraries(self) -> List[str]:
+        """获取已分析的库列表"""
+        analyzed_libs = set()
+        
+        try:
+            # 检查各个输出目录中的库文件
+            output_dirs = [
+                'output/extract_output',
+                'output/description_output/descriptions', 
+                'output/vector_embedding_output/embeddings'
+            ]
+            
+            for dir_path in output_dirs:
+                if os.path.exists(dir_path):
+                    # 查找以库名开头的文件
+                    for file_path in Path(dir_path).glob('*'):
+                        if file_path.is_file():
+                            filename = file_path.name
+                            # 提取库名（假设文件名格式为 libname_xxx.json）
+                            if '_' in filename:
+                                lib_name = filename.split('_')[0]
+                                if lib_name and lib_name not in ['output', 'complete', 'indexes']:
+                                    analyzed_libs.add(lib_name)
+            
+            # 从Neo4j数据库获取库信息
+            try:
+                from neo4j import GraphDatabase
+                driver = GraphDatabase.driver(
+                    self.neo4j_config['uri'],
+                    auth=(self.neo4j_config['user'], self.neo4j_config['password'])
+                )
+                with driver.session() as session:
+                    # 查询所有不同的库名
+                    result = session.run("MATCH (f:Function) RETURN DISTINCT f.repo_name as repo_name")
+                    for record in result:
+                        repo_name = record.get("repo_name")
+                        if repo_name:
+                            analyzed_libs.add(repo_name)
+                driver.close()
+            except Exception as e:
+                logger.warning(f"无法从Neo4j获取库信息: {e}")
+            
+        except Exception as e:
+            logger.warning(f"获取已分析库列表失败: {e}")
+        
+        return sorted(list(analyzed_libs))
+    
     def semantic_search(self, query: str, limit: int = 10) -> str:
         try:
             if not query.strip():
                 return "请输入搜索查询"
+            
+            # 检查模型是否已预加载
+            try:
+                from semantic_search.model_cache import is_model_ready, get_cached_model
+                
+                if not is_model_ready():
+                    logger.info("模型尚未加载完成，正在等待...")
+                    # 尝试获取模型，如果未加载会自动加载
+                    model = get_cached_model()
+                    if model is None:
+                        return "模型加载失败，请稍后重试"
+                else:
+                    logger.info("使用预加载的模型进行搜索")
+            except ImportError:
+                logger.warning("模型缓存模块不可用，使用原有逻辑")
             
             # Try to import semantic search module with multiple fallback paths
             searcher = None
@@ -201,6 +329,7 @@ class OSSCompassAppNew:
                         import os
                         embeddings_dir = os.path.join(sync_config.index_path, "embeddings")
                         if os.path.exists(embeddings_dir):
+                            loaded_files = []
                             for file in os.listdir(embeddings_dir):
                                 if file.endswith("_embeddings.json"):
                                     # Extract the base filename without _embeddings.json
@@ -210,13 +339,18 @@ class OSSCompassAppNew:
                                     if os.path.exists(index_file):
                                         logger.info(f"Loading index from {index_file}")
                                         indexer.load_index(index_file)
-                                        break
+                                        loaded_files.append(base_name)
                                     else:
                                         # If no index file, try to load embeddings directly
                                         embedding_file = os.path.join(embeddings_dir, file)
                                         logger.info(f"Loading embeddings directly from {embedding_file}")
                                         indexer.embedding_manager.load_index(embedding_file)
-                                        break
+                                        loaded_files.append(base_name)
+                            
+                            if loaded_files:
+                                logger.info(f"Successfully loaded embeddings for libraries: {', '.join(loaded_files)}")
+                            else:
+                                logger.warning("No embedding files found to load")
                     except Exception as e:
                         logger.warning(f"Could not load existing embeddings: {e}")
                     
@@ -291,27 +425,110 @@ class OSSCompassAppNew:
                     if not results:
                         return f"未找到与 '{query}' 相关的函数"
                     
-                    # Format results
+                    # 多库搜索逻辑：为每个库分配结果数量
                     formatted_results = []
                     formatted_results.append(f"语义搜索结果 (查询: '{query}')")
                     formatted_results.append("=" * 60)
                     
-                    for i, result in enumerate(results, 1):
-                        # Access SearchResult attributes
-                        embedding = result.embedding
-                        similarity = result.similarity
-                        rank = result.rank
+                    # 首先获取所有可用的库
+                    available_libs = set()
+                    for result in results:
+                        metadata = result.embedding.metadata
+                        # 优先从元数据获取库名，支持多种字段名
+                        repo_name = (metadata.get('repo_name') or 
+                                   metadata.get('repository') or 
+                                   metadata.get('repo'))
+                        if not repo_name:
+                            # 从文件路径中提取库名作为后备方案
+                            file_path = metadata.get('filepath', metadata.get('file_path', ''))
+                            if 'libvips' in file_path.lower():
+                                repo_name = 'libvips'
+                            elif 'libtommath' in file_path.lower() or 'mp_' in file_path.lower():
+                                repo_name = 'libtommath'
+                            else:
+                                repo_name = 'Unknown Library'
+                        available_libs.add(repo_name)
+                    
+                    # 计算每个库应该返回的结果数量
+                    num_libs = len(available_libs)
+                    if num_libs == 0:
+                        return f"未找到与 '{query}' 相关的函数"
+                    
+                    # 为每个库分配结果数量
+                    results_per_lib = max(1, limit // num_libs)  # 每个库至少1个结果
+                    remaining_results = limit % num_libs  # 剩余结果分配给前几个库
+                    
+                    # 按库分组结果
+                    repo_groups = {}
+                    for result in results:
+                        metadata = result.embedding.metadata
+                        # 优先从元数据获取库名，支持多种字段名
+                        repo_name = (metadata.get('repo_name') or 
+                                   metadata.get('repository') or 
+                                   metadata.get('repo'))
+                        if not repo_name:
+                            # 从文件路径中提取库名作为后备方案
+                            file_path = metadata.get('filepath', metadata.get('file_path', ''))
+                            if 'libvips' in file_path.lower():
+                                repo_name = 'libvips'
+                            elif 'libtommath' in file_path.lower() or 'mp_' in file_path.lower():
+                                repo_name = 'libtommath'
+                            else:
+                                repo_name = 'Unknown Library'
                         
-                        # Get function information from embedding metadata
-                        metadata = embedding.metadata
-                        func_name = metadata.get('name', 'Unknown')
-                        file_path = metadata.get('file_path', 'Unknown')
-                        content = embedding.content
+                        if repo_name not in repo_groups:
+                            repo_groups[repo_name] = []
+                        repo_groups[repo_name].append(result)
+                    
+                    # 为每个库显示指定数量的结果
+                    result_count = 0
+                    lib_count = 0
+                    for repo_name in available_libs:
+                        if repo_name not in repo_groups:
+                            continue
+                            
+                        repo_results = repo_groups[repo_name]
                         
-                        formatted_results.append(f"\n{i}. {func_name}")
-                        formatted_results.append(f"   文件: {file_path}")
-                        formatted_results.append(f"   相似度: {similarity:.4f}")
-                        formatted_results.append(f"   内容: {content[:100]}...")
+                        # 计算这个库应该显示的结果数量
+                        lib_results_count = results_per_lib
+                        if lib_count < remaining_results:
+                            lib_results_count += 1
+                        
+                        # 限制结果数量
+                        lib_results_count = min(lib_results_count, len(repo_results))
+                        
+                        if lib_results_count > 0:
+                            formatted_results.append(f"\n📚 库: {repo_name} (显示 {lib_results_count} 个结果)")
+                            formatted_results.append("-" * 40)
+                            
+                            for i in range(lib_results_count):
+                                result = repo_results[i]
+                                result_count += 1
+                                embedding = result.embedding
+                                similarity = result.similarity
+                                
+                                # Get function information
+                                metadata = embedding.metadata
+                                func_name = metadata.get('name', 'Unknown')
+                                file_path = metadata.get('filepath', metadata.get('file_path', 'Unknown'))
+                                content = embedding.content
+                                
+                                formatted_results.append(f"  {result_count}. {func_name}")
+                                formatted_results.append(f"     文件: {file_path}")
+                                formatted_results.append(f"     相似度: {similarity:.4f}")
+                                formatted_results.append(f"     内容: {content[:150]}...")
+                                formatted_results.append("")
+                        
+                        lib_count += 1
+                    
+                    # Add summary
+                    formatted_results.append("=" * 60)
+                    formatted_results.append(f"总计: {result_count} 个结果，来自 {len(available_libs)} 个库")
+                    formatted_results.append(f"每个库最多显示: {results_per_lib} 个结果")
+                    
+                    # List all libraries found
+                    if len(available_libs) > 1:
+                        formatted_results.append(f"涉及的库: {', '.join(sorted(available_libs))}")
                     
                     return "\n".join(formatted_results)
                 
@@ -675,7 +892,7 @@ class OSSCompassAppNew:
     
     def build_interface(self):
         with gr.Blocks(
-            title="OSSCompass 开源项目分析工具 - 新布局", 
+            title="API图谱与生态评估分析工具", 
             theme=gr.themes.Soft(),
             css="""
             .main-container {
