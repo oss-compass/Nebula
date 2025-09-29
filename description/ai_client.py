@@ -1,8 +1,3 @@
-"""
-AI模型调用模块
-负责与AI模型API的交互和docstring生成
-"""
-
 import asyncio
 import time
 import aiohttp
@@ -151,11 +146,34 @@ async def call_model_batch(session: aiohttp.ClientSession, functions_batch: List
     
     batch_data = []
     for func in functions_batch:
+<<<<<<< HEAD
+        # 优先使用extract_output中已有的复杂度信息
+        if 'complexity' in func and func['complexity'] and func['complexity'].get('status') != 'pending':
+            # 使用extract模块计算的复杂度信息
+            extract_complexity = func['complexity']
+            complexity_info = {
+                'complexity_level': extract_complexity.get('complexity_level', 'moderate'),
+                'complexity_score': extract_complexity.get('complexity_score', 15.0),
+                'cyclomatic_complexity': extract_complexity.get('cyclomatic_complexity', 0),
+                'lines_of_code': extract_complexity.get('lines_of_code', 0),
+                'branch_count': extract_complexity.get('branch_count', 0),
+                'parameters': extract_complexity.get('parameters', 0),
+                'nesting_depth': extract_complexity.get('nesting_depth', 0),
+                'cognitive_complexity': extract_complexity.get('cognitive_complexity', 0),
+                'source': 'extract_module'
+            }
+        elif complexity_cache and id(func) in complexity_cache:
+            complexity_info = complexity_cache[id(func)]
+        else:
+            complexity_info = calculate_complexity_score(func, all_functions_data)
+            complexity_info['source'] = 'recalculated'
+=======
         # 使用预计算的复杂度信息或重新计算
         if complexity_cache and id(func) in complexity_cache:
             complexity_info = complexity_cache[id(func)]
         else:
             complexity_info = calculate_complexity_score(func, all_functions_data)
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
         context_summary = generate_context_summary_fast(func)
         
         function_name = func.get('basic_info', {}).get('function_name', 'unknown')
@@ -221,11 +239,35 @@ async def call_model(session: aiohttp.ClientSession, lang: str, function_info: D
     
     from .config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
     
+<<<<<<< HEAD
+    # 默认使用extract模块的复杂度信息，除非缓存中有重新计算的结果
+    if complexity_cache and id(function_info) in complexity_cache:
+        complexity_info = complexity_cache[id(function_info)]
+    elif 'complexity' in function_info and function_info['complexity'] and function_info['complexity'].get('status') != 'pending':
+        # 使用extract模块计算的复杂度信息（默认行为）
+        extract_complexity = function_info['complexity']
+        complexity_info = {
+            'complexity_level': extract_complexity.get('complexity_level', 'moderate'),
+            'complexity_score': extract_complexity.get('complexity_score', 15.0),
+            'cyclomatic_complexity': extract_complexity.get('cyclomatic_complexity', 0),
+            'lines_of_code': extract_complexity.get('lines_of_code', 0),
+            'branch_count': extract_complexity.get('branch_count', 0),
+            'parameters': extract_complexity.get('parameters', 0),
+            'nesting_depth': extract_complexity.get('nesting_depth', 0),
+            'cognitive_complexity': extract_complexity.get('cognitive_complexity', 0),
+            'source': 'extract_module'
+        }
+    else:
+        # 回退到重新计算复杂度
+        complexity_info = calculate_complexity_score(function_info, all_functions_data)
+        complexity_info['source'] = 'recalculated'
+=======
     # 使用预计算的复杂度信息或重新计算
     if complexity_cache and id(function_info) in complexity_cache:
         complexity_info = complexity_cache[id(function_info)]
     else:
         complexity_info = calculate_complexity_score(function_info, all_functions_data)
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
     
     # 生成上下文摘要（使用快速版本）
     context_summary = generate_context_summary_fast(function_info)

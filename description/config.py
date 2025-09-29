@@ -1,8 +1,11 @@
+<<<<<<< HEAD
+=======
 """
 Description模块配置和常量定义
 包含所有系统提示、API配置、默认参数等
 """
 
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
 import os
 from typing import Dict, Any
 

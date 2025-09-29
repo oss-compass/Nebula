@@ -1,8 +1,11 @@
+<<<<<<< HEAD
+=======
 """
 缓存管理模块
 负责函数描述结果的缓存存储和检索
 """
 
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
 import hashlib
 import pickle
 from pathlib import Path
