@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+=======
+"""
+复杂度计算模块
+负责计算函数的复杂度评分和分类
+"""
+
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
 from typing import Any, Dict, List, Tuple
 from .config import DEFAULT_WEIGHTS, COMPLEXITY_THRESHOLDS
 

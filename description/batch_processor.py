@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+=======
+"""
+批量处理模块
+负责函数的批量处理和结果管理
+"""
+
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
 import asyncio
 import aiohttp
 from typing import Any, Dict, List
@@ -134,7 +142,11 @@ def _create_function_index(results: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+<<<<<<< HEAD
 async def generate(functions_list: List[Dict], concurrent: int = 5, batch_size: int = 10, skip_complexity: bool = False, recalculate_metrics: bool = False) -> Dict[str, Any]:
+=======
+async def generate(functions_list: List[Dict], concurrent: int = 5, batch_size: int = 10, skip_complexity: bool = False) -> Dict[str, Any]:
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
     """使用批量处理生成docstrings
     
     Args:
@@ -142,7 +154,10 @@ async def generate(functions_list: List[Dict], concurrent: int = 5, batch_size: 
         concurrent: 并发数
         batch_size: 批次大小
         skip_complexity: 是否跳过复杂度计算，直接使用moderate
+<<<<<<< HEAD
         recalculate_metrics: 是否重新计算复杂度指标（默认使用extract模块的指标）
+=======
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
     """
     results: Dict[str, Any] = {}
     sem = asyncio.Semaphore(concurrent)
@@ -170,6 +185,7 @@ async def generate(functions_list: List[Dict], concurrent: int = 5, batch_size: 
         simple_functions = []
         complex_functions = []
         
+<<<<<<< HEAD
         # 默认使用extract模块的指标，除非明确要求重新计算
         for func in functions_list:
             # 检查是否已有复杂度信息且不需要重新计算
@@ -194,6 +210,11 @@ async def generate(functions_list: List[Dict], concurrent: int = 5, batch_size: 
                 complexity_info['source'] = 'recalculated'
                 print(f"重新计算复杂度: {func.get('basic_info', {}).get('function_name', 'unknown')}")
             
+=======
+        # 使用快速复杂度计算（不传入all_functions_data避免重复统计）
+        for func in functions_list:
+            complexity_info = calculate_complexity_score(func, None)  # 传入None避免重复计算
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
             complexity_cache[id(func)] = complexity_info
             
             if complexity_info['complexity_level'] == 'simple':

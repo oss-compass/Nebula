@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
 import argparse
 import json
 import asyncio
@@ -16,7 +20,10 @@ def main():
     parser.add_argument('--use-cache', action='store_true', help='Enable caching to speed up processing')
     parser.add_argument('--clear-cache', action='store_true', help='Clear cache before processing')
     parser.add_argument('--skip-complexity', action='store_true', help='Skip complexity calculation, use moderate for all functions (faster processing)')
+<<<<<<< HEAD
     parser.add_argument('--recalculate-metrics', action='store_true', help='Recalculate complexity and importance metrics instead of using extract module output (slower but more accurate)')
+=======
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
     args = parser.parse_args()
     
     # 缓存管理
@@ -59,7 +66,11 @@ def main():
         print("[WARNING] 跳过复杂度计算模式：所有函数将使用moderate复杂度，处理速度更快")
     
     # 显示性能优化说明
+<<<<<<< HEAD
     if args.use_cache or args.skip_complexity or args.recalculate_metrics:
+=======
+    if args.use_cache or args.skip_complexity:
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
         print("\n" + "="*50)
         print("性能优化说明:")
         print(PERFORMANCE_NOTES)
@@ -68,6 +79,7 @@ def main():
             print("- 所有函数默认使用moderate复杂度")
             print("- 所有函数都使用批量处理，速度更快")
             print("- 适合快速生成大量函数的描述")
+<<<<<<< HEAD
         if args.recalculate_metrics:
             print("\n[RECALCULATE] 重新计算指标模式说明:")
             print("- 忽略extract模块的复杂度信息，重新计算")
@@ -82,6 +94,12 @@ def main():
     
     # 生成描述
     final = asyncio.run(generate(functions, args.concurrent, args.batch_size, args.skip_complexity, args.recalculate_metrics))
+=======
+        print("="*50 + "\n")
+    
+    # 生成描述
+    final = asyncio.run(generate(functions, args.concurrent, args.batch_size, args.skip_complexity))
+>>>>>>> d73e9c4add0f6ab55a65312431901567e37244ec
     
     # 生成输出文件名
     input_filename = Path(args.input).stem
