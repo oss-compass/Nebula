@@ -436,7 +436,8 @@ for func in functions:
         'return_type': func.get('basic_info', {{}}).get('return_type', ''),
         'docstring_description': func.get('description_info', {{}}).get('docstring', {{}}).get('description', ''),
         'complexity_score': func.get('complexity', {{}}).get('semantic_complexity', {{}}).get('complexity_score', 0),
-        'function_type': 'test' if func.get('basic_info', {{}}).get('function_name', '').startswith('test_') else 'regular'
+        'function_type': 'test' if func.get('basic_info', {{}}).get('function_name', '').startswith('test_') else 'regular',
+        'repo_name': {repo_name_escaped}
     }}
     
     texts.append(source_code)

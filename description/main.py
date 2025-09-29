@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--use-cache', action='store_true', help='Enable caching to speed up processing')
     parser.add_argument('--clear-cache', action='store_true', help='Clear cache before processing')
     parser.add_argument('--skip-complexity', action='store_true', help='Skip complexity calculation, use moderate for all functions (faster processing)')
+    parser.add_argument('--recalculate-metrics', action='store_true', help='Recalculate complexity and importance metrics instead of using extract module output (slower but more accurate)')
     args = parser.parse_args()
     
     # 缓存管理
@@ -59,7 +60,7 @@ def main():
         print("[WARNING] 跳过复杂度计算模式：所有函数将使用moderate复杂度，处理速度更快")
     
     # 显示性能优化说明
-    if args.use_cache or args.skip_complexity:
+    if args.use_cache or args.skip_complexity or args.recalculate_metrics:
         print("\n" + "="*50)
         print("性能优化说明:")
         print(PERFORMANCE_NOTES)
@@ -68,10 +69,20 @@ def main():
             print("- 所有函数默认使用moderate复杂度")
             print("- 所有函数都使用批量处理，速度更快")
             print("- 适合快速生成大量函数的描述")
+        if args.recalculate_metrics:
+            print("\n[RECALCULATE] 重新计算指标模式说明:")
+            print("- 忽略extract模块的复杂度信息，重新计算")
+            print("- 处理速度较慢，但可能更准确")
+            print("- 适合需要重新分析复杂度的场景")
+        else:
+            print("\n[DEFAULT] 默认模式说明:")
+            print("- 优先使用extract模块已计算的复杂度信息")
+            print("- 避免重复计算，提高处理速度")
+            print("- 保持数据一致性，推荐使用")
         print("="*50 + "\n")
     
     # 生成描述
-    final = asyncio.run(generate(functions, args.concurrent, args.batch_size, args.skip_complexity))
+    final = asyncio.run(generate(functions, args.concurrent, args.batch_size, args.skip_complexity, args.recalculate_metrics))
     
     # 生成输出文件名
     input_filename = Path(args.input).stem

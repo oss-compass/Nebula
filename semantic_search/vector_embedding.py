@@ -45,6 +45,13 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
+# 尝试导入FAISS
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    FAISS_AVAILABLE = False
+
 # 设置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,6 +69,15 @@ class EmbeddingConfig:
     use_cache: bool = True
     openai_api_key: Optional[str] = None
     openai_model: str = "text-embedding-ada-002"
+    
+    # FAISS配置
+    use_faiss: bool = True
+    faiss_index_type: str = "flat"  # flat, ivf, hnsw
+    faiss_metric: str = "ip"  # ip (inner product), l2 (euclidean)
+    faiss_nlist: int = 100  # IVF聚类数量
+    faiss_nprobe: int = 10  # IVF搜索时检查的聚类数量
+    faiss_m: int = 16  # HNSW连接数
+    faiss_use_gpu: bool = False
 
 
 @dataclass
@@ -456,6 +472,35 @@ class CodeEmbeddingManager:
         self.embeddings_index = {}  # id -> CodeEmbedding
         self.embeddings_array = None  # 所有嵌入的数组
         self.embeddings_ids = []  # 对应的ID列表
+        
+        # FAISS索引器
+        self.faiss_indexer = None
+        if config.use_faiss and FAISS_AVAILABLE:
+            self._init_faiss_indexer()
+        elif config.use_faiss and not FAISS_AVAILABLE:
+            logger.warning("FAISS requested but not available, falling back to numpy search")
+    
+    def _init_faiss_indexer(self):
+        """初始化FAISS索引器"""
+        try:
+            from .faiss_indexer import FAISSVectorIndexer, FAISSIndexerConfig
+            
+            faiss_config = FAISSIndexerConfig(
+                index_type=self.config.faiss_index_type,
+                dimension=self.config.dimension,
+                metric=self.config.faiss_metric,
+                nlist=self.config.faiss_nlist,
+                nprobe=self.config.faiss_nprobe,
+                m=self.config.faiss_m,
+                use_gpu=self.config.faiss_use_gpu
+            )
+            
+            self.faiss_indexer = FAISSVectorIndexer(faiss_config)
+            logger.info("FAISS indexer initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize FAISS indexer: {e}")
+            self.faiss_indexer = None
     
     def add_embeddings(self, embeddings: List[CodeEmbedding]):
         """添加嵌入到索引"""
@@ -464,6 +509,28 @@ class CodeEmbeddingManager:
         
         # 重建数组索引
         self._rebuild_array_index()
+        
+        # 添加到FAISS索引
+        if self.faiss_indexer and embeddings:
+            try:
+                # 准备向量数组
+                vectors_array = np.array([emb.embedding for emb in embeddings])
+                
+                # 准备元数据
+                metadata_list = [emb.metadata for emb in embeddings]
+                
+                # 添加到FAISS
+                vector_ids = self.faiss_indexer.add_vectors(vectors_array, metadata_list)
+                
+                # 更新向量ID映射
+                for i, embedding in enumerate(embeddings):
+                    if i < len(vector_ids):
+                        embedding.faiss_vector_id = vector_ids[i]
+                
+                logger.info(f"Added {len(embeddings)} embeddings to FAISS index")
+                
+            except Exception as e:
+                logger.error(f"Failed to add embeddings to FAISS: {e}")
     
     def _rebuild_array_index(self):
         """重建数组索引"""
@@ -485,7 +552,31 @@ class CodeEmbeddingManager:
         # 生成查询嵌入
         query_embedding = self.vectorizer.embed_single(query, query_metadata or {})
         
-        # 计算相似度
+        # 使用FAISS搜索（如果可用）
+        if self.faiss_indexer:
+            try:
+                # 使用FAISS搜索
+                faiss_results = self.faiss_indexer.search(
+                    query_embedding.embedding, 
+                    top_k=top_k, 
+                    threshold=threshold
+                )
+                
+                # 转换结果
+                similarities = []
+                for vector_id, similarity in faiss_results:
+                    # 根据FAISS向量ID找到对应的嵌入
+                    for embedding in self.embeddings_index.values():
+                        if hasattr(embedding, 'faiss_vector_id') and embedding.faiss_vector_id == vector_id:
+                            similarities.append((embedding, similarity))
+                            break
+                
+                return similarities
+                
+            except Exception as e:
+                logger.error(f"FAISS search failed, falling back to numpy search: {e}")
+        
+        # 回退到numpy搜索
         similarities = []
         for i, candidate_id in enumerate(self.embeddings_ids):
             candidate_embedding = self.embeddings_index[candidate_id]
@@ -513,7 +604,8 @@ class CodeEmbeddingManager:
                     'embedding': emb.embedding.tolist(),
                     'metadata': emb.metadata,
                     'model_name': emb.model_name,
-                    'timestamp': emb.timestamp
+                    'timestamp': emb.timestamp,
+                    'faiss_vector_id': getattr(emb, 'faiss_vector_id', None)
                 }
                 for emb_id, emb in self.embeddings_index.items()
             }
@@ -521,6 +613,11 @@ class CodeEmbeddingManager:
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        
+        # 保存FAISS索引
+        if self.faiss_indexer:
+            faiss_filepath = filepath.replace('.json', '_faiss')
+            self.faiss_indexer.save_index(faiss_filepath)
     
     def load_index(self, filepath: str):
         """从文件加载索引"""
@@ -538,10 +635,23 @@ class CodeEmbeddingManager:
                 model_name=emb_data['model_name'],
                 timestamp=emb_data['timestamp']
             )
+            # 恢复FAISS向量ID
+            if 'faiss_vector_id' in emb_data:
+                embedding.faiss_vector_id = emb_data['faiss_vector_id']
+            
             self.embeddings_index[emb_id] = embedding
         
         # 重建数组索引
         self._rebuild_array_index()
+        
+        # 加载FAISS索引
+        if self.faiss_indexer:
+            faiss_filepath = filepath.replace('.json', '_faiss')
+            try:
+                self.faiss_indexer.load_index(faiss_filepath)
+                logger.info("FAISS index loaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to load FAISS index: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取索引统计信息"""
@@ -589,6 +699,9 @@ class CodeEmbeddingManager:
         """关闭资源"""
         if self.vectorizer:
             self.vectorizer.close()
+        
+        if self.faiss_indexer:
+            self.faiss_indexer.close()
 
 
 def create_default_config() -> EmbeddingConfig:
@@ -600,7 +713,10 @@ def create_default_config() -> EmbeddingConfig:
         batch_size=32,
         max_length=512,
         cache_dir="./embedding_cache",
-        use_cache=True
+        use_cache=True,
+        use_faiss=True,
+        faiss_index_type="flat",
+        faiss_metric="ip"
     )
 
 
