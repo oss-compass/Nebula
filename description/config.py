@@ -1,8 +1,3 @@
-"""
-Description模块配置和常量定义
-包含所有系统提示、API配置、默认参数等
-"""
-
 import os
 from typing import Dict, Any
 

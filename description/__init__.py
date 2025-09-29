@@ -1,28 +1,3 @@
-"""
-Description模块 - 函数描述生成工具包
-
-这个模块提供了基于AI的函数描述生成功能，支持：
-- 智能复杂度分析
-- 上下文感知的docstring生成
-- 批量处理和缓存优化
-- 多种输出格式
-
-主要功能：
-1. 从extract5.py的输出生成函数描述
-2. 支持简单函数的批量处理
-3. 复杂函数的单独处理
-4. 智能缓存机制
-5. 多种复杂度分析算法
-
-使用方法：
-    # 命令行使用
-    python -m description.main input.json --use-cache --concurrent 5
-    
-    # 编程接口
-    from description import generate, calculate_complexity_score
-    from description.cache import description_cache
-"""
-
 __version__ = "1.0.0"
 __author__ = "Description Generation Team"
 

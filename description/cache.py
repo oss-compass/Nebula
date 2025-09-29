@@ -1,8 +1,3 @@
-"""
-缓存管理模块
-负责函数描述结果的缓存存储和检索
-"""
-
 import hashlib
 import pickle
 from pathlib import Path

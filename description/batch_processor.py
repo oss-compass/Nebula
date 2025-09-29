@@ -1,8 +1,3 @@
-"""
-批量处理模块
-负责函数的批量处理和结果管理
-"""
-
 import asyncio
 import aiohttp
 from typing import Any, Dict, List

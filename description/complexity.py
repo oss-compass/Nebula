@@ -1,8 +1,3 @@
-"""
-复杂度计算模块
-负责计算函数的复杂度评分和分类
-"""
-
 from typing import Any, Dict, List, Tuple
 from .config import DEFAULT_WEIGHTS, COMPLEXITY_THRESHOLDS
 

@@ -1,8 +1,3 @@
-"""
-AI模型调用模块
-负责与AI模型API的交互和docstring生成
-"""
-
 import asyncio
 import time
 import aiohttp

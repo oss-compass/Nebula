@@ -1,8 +1,3 @@
-"""
-上下文摘要模块
-负责生成函数的上下文摘要和智能分析
-"""
-
 from pathlib import Path
 from typing import Any, Dict, List
 from .config import (
