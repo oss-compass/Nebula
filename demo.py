@@ -31,7 +31,7 @@ class OSSCompassAppNew:
         self.neo4j_config = {
             'uri': 'bolt://localhost:7687',
             'user': 'neo4j',
-            'password': '90879449Drq',
+            'password': os.getenv('NEO4J_PASSWORD', ''),
             'database': None
         }
         

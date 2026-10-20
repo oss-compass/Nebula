@@ -498,7 +498,7 @@ def main():
     parser.add_argument("complete_json", help="Path to complete JSON file (e.g., attrs_complete_for_neo4j.json)")
     parser.add_argument("--uri", default=os.getenv("NEO4J_URI", "bolt://localhost:7687"))
     parser.add_argument("--user", default=os.getenv("NEO4J_USER", "neo4j"))
-    parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", "90879449Drq"))
+    parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", ""))
     parser.add_argument("--database", default=os.getenv("NEO4J_DATABASE", "neo4j"))
     parser.add_argument("--clean-db", action="store_true", help="Clear the database before ingesting data")
 

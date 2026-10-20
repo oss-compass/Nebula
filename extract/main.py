@@ -322,7 +322,7 @@ def main():
         print("  --neo4j: 直接写入Neo4j数据库（不生成JSON文件）")
         print("  --neo4j-uri <URI>: Neo4j数据库URI (默认: bolt://localhost:7687)")
         print("  --neo4j-user <用户名>: Neo4j用户名 (默认: neo4j)")
-        print("  --neo4j-password <密码>: Neo4j密码 (默认: 90879449Drq)")
+        print("  --neo4j-password <密码>: Neo4j密码 (默认读取 NEO4J_PASSWORD)")
         print("  --neo4j-database <数据库>: Neo4j数据库名 (默认: neo4j)")
         print("  --clear-db: 清空Neo4j数据库后写入")
         print("  <稀疏检出路径>: 指定要检出的子目录路径（如: src/, lib/, core/）")

@@ -61,7 +61,7 @@
     "neo4j": {
       "uri": "bolt://localhost:7687",
       "user": "neo4j",
-      "password": "90879449Drq",
+      "password": "",
       "database": null
     },
     "max_results": 50,

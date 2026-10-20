@@ -37,7 +37,7 @@ class HybridSearchConfig:
     # 图数据库配置
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "90879449Drq"
+    neo4j_password: str = ""
     neo4j_database: Optional[str] = None
     
     # 搜索配置
@@ -821,7 +821,7 @@ def create_default_hybrid_config() -> HybridSearchConfig:
         graph_weight=0.3,
         neo4j_uri="bolt://localhost:7687",
         neo4j_user="neo4j",
-        neo4j_password="90879449Drq",
+        neo4j_password=os.getenv("NEO4J_PASSWORD", ""),
         neo4j_database=None,
         max_results=50,
         enable_relationship_boost=True,

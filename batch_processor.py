@@ -99,7 +99,7 @@ class BatchProcessor:
                  txt_file: str,
                  neo4j_uri: str = "bolt://localhost:7687",
                  neo4j_user: str = "neo4j", 
-                 neo4j_password: str = "90879449Drq",
+                 neo4j_password: str = "",
                  neo4j_database: Optional[str] = None,
                  clean_db: bool = False,
                  filter_large_functions: bool = False,
@@ -808,7 +808,7 @@ def main():
     parser.add_argument('txt_file', help='包含GitHub库链接的txt文件路径')
     parser.add_argument('--neo4j-uri', default='bolt://localhost:7687', help='Neo4j数据库URI')
     parser.add_argument('--neo4j-user', default='neo4j', help='Neo4j用户名')
-    parser.add_argument('--neo4j-password', default='90879449Drq', help='Neo4j密码')
+    parser.add_argument('--neo4j-password', default=os.getenv('NEO4J_PASSWORD', ''), help='Neo4j密码（默认读取 NEO4J_PASSWORD）')
     parser.add_argument('--neo4j-database', help='Neo4j数据库名')
     parser.add_argument('--clean-db', action='store_true', help='清空数据库')
     parser.add_argument('--filter-large-functions', action='store_true', help='过滤大函数')
